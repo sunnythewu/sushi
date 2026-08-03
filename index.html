@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Japanese Meal Picker</title>
+<style>
+  :root {
+    --ink: #2b2118;
+    --muted: #7c6b5a;
+    --paper: #faf6ef;
+    --card: #ffffff;
+    --accent: #c1440e;
+    --accent-soft: #f7e3d3;
+    --gold: #d9a441;
+    --green: #3e6b4f;
+    --line: #e8ddd0;
+    --shadow: 0 6px 20px rgba(66, 44, 20, 0.08);
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+                 "Segoe UI", system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(1200px 500px at 85% -10%, #fbeede 0%, transparent 60%),
+      radial-gradient(900px 420px at -10% 20%, #efe6d8 0%, transparent 55%),
+      var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.55;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  header { text-align: center; margin-bottom: 34px; }
+  .kicker {
+    display: inline-block;
+    font-size: 0.8rem;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 700;
+    border: 1px solid var(--accent-soft);
+    background: #fff;
+    padding: 5px 14px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-size: clamp(2rem, 5vw, 3.1rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  header h1 .jp { color: var(--accent); font-weight: 700; }
+  header p { color: var(--muted); max-width: 560px; margin: 12px auto 0; font-size: 1.02rem; }
+
+  /* ---- Picker panel ---- */
+  .picker {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 30px;
+  }
+  .picker h2 { font-size: 1.05rem; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .picker .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .mood {
+    border: 1.5px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    padding: 9px 15px;
+    border-radius: 999px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .mood:hover { border-color: var(--gold); transform: translateY(-1px); }
+  .mood.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .picker .hint { color: var(--muted); font-size: 0.85rem; margin-top: 10px; }
+  .pick-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 12px 22px;
+    border-radius: 12px;
+    transition: all 0.15s ease;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #a83a0b; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(193, 68, 14, 0.3); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1.5px solid var(--line); }
+  .btn-ghost:hover { border-color: var(--gold); }
+
+  /* ---- Result banner ---- */
+  .result {
+    display: none;
+    background: linear-gradient(120deg, #fff 0%, #fdf3e7 100%);
+    border: 1.5px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin-bottom: 26px;
+    align-items: center;
+    gap: 16px;
+    box-shadow: var(--shadow);
+  }
+  .result.show { display: flex; animation: pop 0.35s ease; }
+  .result .emoji { font-size: 2.2rem; }
+  .result .text { flex: 1; }
+  .result .text b { font-size: 1.2rem; }
+  .result .text p { color: var(--muted); font-size: 0.92rem; margin-top: 2px; }
+  .result .close {
+    background: none; border: none; cursor: pointer; font-size: 1.3rem; color: var(--muted);
+  }
+  .result .close:hover { color: var(--ink); }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+  /* ---- Search + filters ---- */
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .search {
+    flex: 1 1 240px;
+    border: 1.5px solid var(--line);
+    background: #fff;
+    border-radius: 12px;
+    padding: 11px 16px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  .search:focus { outline: none; border-color: var(--accent); }
+  .cat { cursor: pointer; font-size: 0.88rem; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--muted); transition: all 0.15s ease; font-family: inherit; }
+  .cat:hover { color: var(--ink); border-color: var(--gold); }
+  .cat.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .count { margin-left: auto; color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+
+  /* ---- Cards ---- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 18px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(66, 44, 20, 0.13); }
+  .card.hidden { display: none; }
+  .card.chosen { outline: 3px solid var(--accent); outline-offset: 2px; background: #fffaf5; }
+  .card .top { display: flex; align-items: center; gap: 12px; }
+  .card .emoji { font-size: 2rem; line-height: 1; }
+  .card h3 { font-size: 1.15rem; font-weight: 800; }
+  .card h3 .jp { color: var(--muted); font-weight: 600; font-size: 0.88rem; margin-left: 6px; }
+  .card .photo {
+    aspect-ratio: 4 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 120% at 20% 0%, #fffdf8 0%, #f4e9d8 45%, #eadbc3 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card .photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .card .desc { color: var(--muted); font-size: 0.92rem; flex: 1; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: 0.74rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .tag.price { background: #eef3ea; color: var(--green); }
+  .tag.time { background: #f5efe3; color: #8a6d1f; }
+  .card .meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; }
+  .card .moods { display: flex; gap: 4px; }
+  .card .moods span { font-size: 0.75rem; }
+
+  footer { text-align: center; color: var(--muted); font-size: 0.82rem; margin-top: 46px; }
+  footer .credit { margin-top: 8px; font-size: 0.74rem; }
+  @media (max-width: 560px) {
+    .wrap { padding: 24px 14px 60px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="kicker">What should I eat? · 何を食べる？</span>
+    <h1>Japanese Meal <span class="jp">Picker</span></h1>
+    <p>Feeling hungry and can't decide? Filter by mood, browse by category, or let the dice roll for you.</p>
+  </header>
+
+  <section class="picker">
+    <h2>😌 What's your mood?</h2>
+    <div class="row" id="moods"></div>
+    <div class="pick-actions">
+      <button class="btn btn-primary" id="roll">🎲 Surprise me!</button>
+      <button class="btn btn-ghost" id="clear">Reset</button>
+    </div>
+    <div class="hint">Pick a mood to narrow things down, or hit “Surprise me” and let fate decide.</div>
+  </section>
+
+  <div class="result" id="result">
+    <div class="emoji" id="resultEmoji"></div>
+    <div class="text">
+      <b id="resultName"></b>
+      <p id="resultDesc"></p>
+    </div>
+    <button class="close" id="resultClose" aria-label="Dismiss">✕</button>
+  </div>
+
+  <div class="controls">
+    <input class="search" id="search" type="search" placeholder="Search meals… e.g. ramen, rice, hotpot">
+    <div class="row" id="cats" style="display: contents;"></div>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>Made with 🍥 for indecisive appetites · All prices are rough per-person guides
+    <div class="credit">Food illustrations © Illustcenter (illustcenter.com) — free to use per their terms · Photos can be swapped for real photography on request</div>
+  </footer>
+</div>
+
+<script>
+const MEALS = [
+  {
+    name: "Sushi & Sashimi",
+    jp: "寿司",
+    emoji: "🍣",
+    cat: "Rice & Seafood",
+    price: "$25–100",
+    time: "Lunch · Dinner",
+    moods: ["celebrate", "healthy"],
+    desc: "Vinegared rice with fresh fish — from humble conveyor-belt bites to omakase chef's counter masterpieces."
+  },
+  {
+    name: "Ramen",
+    jp: "ラーメン",
+    emoji: "🍜",
+    cat: "Noodles",
+    price: "$10–20",
+    time: "Lunch · Dinner",
+    moods: ["comfort", "quick"],
+    desc: "Wheat noodles in rich broth — shoyu, miso, shio, or creamy tonkotsu. Slurping is encouraged."
+  },
+  {
+    name: "Udon",
+    jp: "うどん",
+    emoji: "🥢",
+    cat: "Noodles",
+    price: "$8–16",
+    time: "Lunch",
+    moods: ["quick", "comfort"],
+    desc: "Thick, chewy wheat noodles served hot in dashi broth or cold with dipping sauce."
+  },
+  {
+    name: "Soba",
+    jp: "そば",
+    emoji: "🍝",
+    cat: "Noodles",
+    price: "$8–18",
+    time: "Lunch",
+    moods: ["healthy", "quick"],
+    desc: "Buckwheat noodles with a nutty flavor — try zaru soba cold, or kake soba in warm broth."
+  },
+  {
+    name: "Donburi",
+    jp: "丼",
+    emoji: "🍚",
+    cat: "Rice & Seafood",
+    price: "$10–20",
+    time: "Lunch · Dinner",
+    moods: ["quick", "comfort"],
+    desc: "A one-bowl rice meal — gyudon (beef), katsudon (pork cutlet), oyakodon (chicken & egg), or unagi."
+  },
+  {
+    name: "Kaiseki",
+    jp: "懐石料理",
+    emoji: "🏮",
+    cat: "Fine Dining",
+    price: "$150–400",
+    time: "Dinner",
+    moods: ["celebrate"],
+    desc: "A multi-course tasting journey of seasonal, artfully plated dishes. Japan's culinary theater."
+  },
+  {
+    name: "Izakaya",
+    jp: "居酒屋",
+    emoji: "🍶",
+    cat: "Share & Graze",
+    price: "$25–50",
+    time: "Dinner",
+    moods: ["share", "celebrate"],
+    desc: "Casual Japanese pub: small plates, skewers, sashimi, and drinks shared around the table."
+  },
+  {
+    name: "Tempura",
+    jp: "天ぷら",
+    emoji: "🍤",
+    cat: "Fried",
+    price: "$15–40",
+    time: "Lunch · Dinner",
+    moods: ["comfort", "celebrate"],
+    desc: "Shrimp and vegetables in a featherlight, crackly batter — best with tentsuyu dipping sauce."
+  },
+  {
+    name: "Yakitori",
+    jp: "焼き鳥",
+    emoji: "🍢",
+    cat: "Fried",
+    price: "$15–35",
+    time: "Dinner",
+    moods: ["share", "comfort"],
+    desc: "Charcoal-grilled chicken skewers — negima, tsukune, and more — with tare or salt."
+  },
+  {
+    name: "Okonomiyaki",
+    jp: "お好み焼き",
+    emoji: "🥞",
+    cat: "Fried",
+    price: "$12–22",
+    time: "Lunch · Dinner",
+    moods: ["share", "comfort"],
+    desc: "Savory cabbage pancake topped with sauce, mayo, and bonito flakes. Osaka-style, cooked at your table."
+  },
+  {
+    name: "Tonkatsu",
+    jp: "とんかつ",
+    emoji: "🐷",
+    cat: "Fried",
+    price: "$12–25",
+    time: "Lunch · Dinner",
+    moods: ["comfort"],
+    desc: "Panko-crusted, deep-fried pork cutlet with shredded cabbage, rice, and miso soup."
+  },
+  {
+    name: "Japanese Curry",
+    jp: "カレー",
+    emoji: "🍛",
+    cat: "Rice & Seafood",
+    price: "$8–15",
+    time: "Lunch",
+    moods: ["quick", "comfort"],
+    desc: "Thick, mild curry with a deep umami — over rice with katsu, sausage, or cheese."
+  },
+  {
+    name: "Shabu-Shabu / Sukiyaki",
+    jp: "しゃぶしゃぶ・すき焼き",
+    emoji: "🥘",
+    cat: "Hotpot",
+    price: "$30–70",
+    time: "Dinner",
+    moods: ["share", "celebrate"],
+    desc: "Swish paper-thin beef through bubbling broth, then dip in ponzu or sesame sauce."
+  },
+  {
+    name: "Nabe",
+    jp: "鍋",
+    emoji: "🍲",
+    cat: "Hotpot",
+    price: "$20–45",
+    time: "Dinner · Winter",
+    moods: ["share", "comfort"],
+    desc: "Communal hotpot — chanko, yosenabe, or kimchi nabe — perfect for cold nights."
+  },
+  {
+    name: "Teishoku",
+    jp: "定食",
+    emoji: "🍱",
+    cat: "Set Meals",
+    price: "$10–20",
+    time: "Lunch · Dinner",
+    moods: ["quick", "healthy"],
+    desc: "A balanced set meal: main dish, rice, miso soup, and pickles. The everyday Japanese lunch."
+  },
+  {
+    name: "Bento",
+    jp: "弁当",
+    emoji: "🗃️",
+    cat: "Set Meals",
+    price: "$8–18",
+    time: "Lunch",
+    moods: ["quick"],
+    desc: "A packed box of rice, protein, and sides — from station ekiben to department-store feasts."
+  },
+  {
+    name: "Japanese Breakfast",
+    jp: "朝食",
+    emoji: "🌅",
+    cat: "Set Meals",
+    price: "$12–25",
+    time: "Breakfast",
+    moods: ["healthy"],
+    desc: "Grilled fish, rice, miso soup, tamagoyaki, and tsukemono — a savory, satisfying start."
+  },
+  {
+    name: "Onigiri",
+    jp: "おにぎり",
+    emoji: "🍙",
+    cat: "Quick Bites",
+    price: "$2–4",
+    time: "Any time",
+    moods: ["quick"],
+    desc: "Hand-pressed rice balls with fillings like salmon, umeboshi, or tuna mayo. The original fast food."
+  },
+  {
+    name: "Gyoza",
+    jp: "餃子",
+    emoji: "🥟",
+    cat: "Quick Bites",
+    price: "$5–10",
+    time: "Lunch · Dinner",
+    moods: ["quick", "share"],
+    desc: "Crispy-bottomed pork dumplings, usually served with ramen or beer."
+  },
+  {
+    name: "Unagi",
+    jp: "うなぎ",
+    emoji: "🐟",
+    cat: "Rice & Seafood",
+    price: "$20–60",
+    time: "Lunch · Dinner",
+    moods: ["celebrate"],
+    desc: "Grilled freshwater eel glazed in sweet soy — served over rice as unadon or hitsumabushi."
+  },
+  {
+    name: "Takoyaki",
+    jp: "たこ焼き",
+    emoji: "🐙",
+    cat: "Quick Bites",
+    price: "$5–10",
+    time: "Snack",
+    moods: ["share", "quick"],
+    desc: "Golden octopus balls with a molten center, brushed with sauce and mayo."
+  },
+  {
+    name: "Yakiniku",
+    jp: "焼肉",
+    emoji: "🥩",
+    cat: "Share & Graze",
+    price: "$25–60",
+    time: "Dinner",
+    moods: ["share", "celebrate"],
+    desc: "Grill your own marbled beef and vegetables at the table. Smoke, sizzle, and soy-based sauces."
+  }
+];
+
+const MOODS = [
+  { id: "quick",   label: "⚡ Quick & cheap" },
+  { id: "comfort", label: "🛋️ Comfort food" },
+  { id: "healthy", label: "🥗 Healthy" },
+  { id: "share",   label: "👥 Share with friends" },
+  { id: "celebrate", label: "🎉 Celebrate" }
+];
+
+const IMG = {
+  "Sushi & Sashimi": "sushi",
+  "Ramen": "ramen",
+  "Udon": "udon",
+  "Soba": "soba",
+  "Donburi": "donburi",
+  "Kaiseki": "kaiseki",
+  "Izakaya": "izakaya",
+  "Tempura": "tempura",
+  "Yakitori": "yakitori",
+  "Okonomiyaki": "okonomiyaki",
+  "Tonkatsu": "tonkatsu",
+  "Japanese Curry": "curry",
+  "Shabu-Shabu / Sukiyaki": "shabushabu",
+  "Nabe": "nabe",
+  "Teishoku": "teishoku",
+  "Bento": "bento",
+  "Japanese Breakfast": "breakfast",
+  "Onigiri": "onigiri",
+  "Gyoza": "gyoza",
+  "Unagi": "unagi",
+  "Takoyaki": "takoyaki",
+  "Yakiniku": "yakiniku"
+};
+
+const CATS = ["All", ...new Set(MEALS.map(m => m.cat))];
+
+let activeMoods = new Set();
+let activeCat = "All";
+let searchQuery = "";
+
+const grid = document.getElementById("grid");
+const result = document.getElementById("result");
+
+function cardHTML(m, i) {
+  const moodEmoji = { quick: "⚡", comfort: "🛋️", healthy: "🥗", share: "👥", celebrate: "🎉" };
+  const img = IMG[m.name];
+  return `
+    <article class="card" id="card-${i}" data-name="${m.name.toLowerCase()}" data-cat="${m.cat}">
+      <div class="photo"><img src="img/${img}.png" alt="${m.name} illustration" loading="lazy"></div>
+      <div class="top">
+        <span class="emoji">${m.emoji}</span>
+        <h3>${m.name}<span class="jp">${m.jp}</span></h3>
+      </div>
+      <p class="desc">${m.desc}</p>
+      <div class="tags">
+        <span class="tag">${m.cat}</span>
+        <span class="tag price">${m.price}</span>
+        <span class="tag time">${m.time}</span>
+      </div>
+      <div class="meta">
+        <span>Goes with:</span>
+        <div class="moods">${m.moods.map(id => `<span title="${id}">${moodEmoji[id]}</span>`).join("")}</div>
+      </div>
+    </article>`;
+}
+
+function render() {
+  grid.innerHTML = MEALS.map((m, i) => cardHTML(m, i)).join("");
+  updateFilters();
+}
+
+function matches(m) {
+  if (activeCat !== "All" && m.cat !== activeCat) return false;
+  if (activeMoods.size && !m.moods.some(md => activeMoods.has(md))) return false;
+  if (searchQuery && !`${m.name} ${m.jp} ${m.desc} ${m.cat}`.toLowerCase().includes(searchQuery)) return false;
+  return true;
+}
+
+function updateFilters() {
+  let visible = 0;
+  document.querySelectorAll(".card").forEach(card => {
+    const i = Number(card.id.split("-")[1]);
+    const show = matches(MEALS[i]);
+    card.classList.toggle("hidden", !show);
+    if (show) visible++;
+  });
+  document.getElementById("count").textContent = `${visible} of ${MEALS.length} meals`;
+}
+
+function showResult(m) {
+  document.getElementById("resultEmoji").textContent = m.emoji;
+  document.getElementById("resultName").textContent = `${m.name} (${m.jp})`;
+  document.getElementById("resultDesc").textContent = `${m.desc} · ${m.price} per person`;
+  result.classList.add("show");
+  result.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function roll() {
+  const pool = MEALS.filter(matches);
+  if (!pool.length) {
+    showResult({ name: "Nothing matches!", jp: "", emoji: "🤔", desc: "Loosen your filters and try again.", price: "" });
+    return;
+  }
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  showResult(pick);
+  document.querySelectorAll(".card").forEach(c => c.classList.remove("chosen"));
+  const idx = MEALS.indexOf(pick);
+  const card = document.getElementById(`card-${idx}`);
+  if (card) {
+    card.classList.remove("hidden");
+    card.classList.add("chosen");
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+// Mood buttons
+const moodsEl = document.getElementById("moods");
+MOODS.forEach(m => {
+  const b = document.createElement("button");
+  b.className = "mood";
+  b.textContent = m.label;
+  b.dataset.id = m.id;
+  b.addEventListener("click", () => {
+    if (activeMoods.has(m.id)) activeMoods.delete(m.id);
+    else activeMoods.add(m.id);
+    b.classList.toggle("active", activeMoods.has(m.id));
+    updateFilters();
+  });
+  moodsEl.appendChild(b);
+});
+
+// Category buttons
+const catsEl = document.getElementById("cats");
+CATS.forEach(c => {
+  const b = document.createElement("button");
+  b.className = "cat";
+  b.textContent = c;
+  if (c === "All") b.classList.add("active");
+  b.addEventListener("click", () => {
+    activeCat = c;
+    document.querySelectorAll(".cat").forEach(x => x.classList.toggle("active", x === b));
+    updateFilters();
+  });
+  catsEl.appendChild(b);
+});
+
+// Search
+document.getElementById("search").addEventListener("input", e => {
+  searchQuery = e.target.value.trim().toLowerCase();
+  updateFilters();
+});
+
+// Roll + reset
+document.getElementById("roll").addEventListener("click", roll);
+document.getElementById("clear").addEventListener("click", () => {
+  activeMoods.clear();
+  document.querySelectorAll(".mood").forEach(b => b.classList.remove("active"));
+  activeCat = "All";
+  document.querySelectorAll(".cat").forEach(b => b.classList.toggle("active", b.textContent === "All"));
+  searchQuery = "";
+  document.getElementById("search").value = "";
+  document.querySelectorAll(".card").forEach(c => c.classList.remove("chosen"));
+  result.classList.remove("show");
+  updateFilters();
+});
+document.getElementById("resultClose").addEventListener("click", () => result.classList.remove("show"));
+
+render();
+</script>
+</body>
+</html>
